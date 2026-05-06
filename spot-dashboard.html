@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MUNforward · ค้นหา Spot & PR</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;font-size:15px;background:#f5f5f3;color:#1a1a1a;min-height:100vh}
+.top-bar{background:#fff;border-bottom:1px solid #e5e5e3;padding:14px 24px;display:flex;align-items:center;gap:12px}
+.logo{font-size:16px;font-weight:700;color:#0f6e56}
+.logo span{color:#3c3489}
+.container{max-width:900px;margin:0 auto;padding:24px 16px}
+.card{background:#fff;border:1px solid #e5e5e3;border-radius:12px;padding:20px 24px;margin-bottom:16px}
+.section-title{font-size:13px;font-weight:600;color:#888;margin-bottom:12px;letter-spacing:0.04em}
+.search-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;color:#666;font-weight:500}
+input[type=text]{padding:9px 12px;border:1px solid #d5d5d3;border-radius:8px;font-size:14px;font-family:'Sarabun',sans-serif;width:260px;outline:none;transition:border 0.15s}
+input[type=text]:focus{border-color:#1d9e75}
+select{padding:9px 12px;border:1px solid #d5d5d3;border-radius:8px;font-size:14px;font-family:'Sarabun',sans-serif;background:#fff;outline:none;cursor:pointer}
+.btn{padding:9px 20px;border-radius:8px;font-size:14px;font-family:'Sarabun',sans-serif;cursor:pointer;font-weight:600;border:none}
+.btn-primary{background:#1d9e75;color:#fff}
+.btn-primary:hover{background:#0f6e56}
+.btn-primary:disabled{background:#aaa;cursor:not-allowed}
+.btn-copy{background:#f0f0ee;color:#333;border:1px solid #d5d5d3;padding:6px 14px;font-size:12px;border-radius:6px;cursor:pointer;font-family:'Sarabun',sans-serif}
+.btn-copy:hover{background:#e5e5e3}
+.stat-row{display:flex;gap:10px;flex-wrap:wrap}
+.stat{background:#f5f5f3;border-radius:8px;padding:10px 14px;text-align:center;min-width:80px;flex:1}
+.stat-n{font-size:22px;font-weight:700}
+.stat-l{font-size:11px;color:#888;margin-top:2px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:650px){.three-col{grid-template-columns:1fr}}
+.wave-pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 12px;border-radius:20px;margin-bottom:10px}
+.w103{background:#e1f5ee;color:#085041;border:1px solid #5dcaa5}
+.w88{background:#eeedfe;color:#3c3489;border:1px solid #afa9ec}
+.wpr{background:#faeeda;color:#633806;border:1px solid #ef9f27}
+.slot-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0ee}
+.slot-row:last-child{border-bottom:none}
+.slot-time{font-size:13px;font-weight:600;min-width:44px}
+.slot-pos{font-size:12px;color:#666;flex:1}
+.chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px}
+.chip-prime{background:#e1f5ee;color:#0f6e56;border:1px solid #5dcaa5}
+.chip-free{background:#f1efe8;color:#5f5e5a;border:1px solid #b4b2a9}
+.chip-pr{background:#faeeda;color:#633806;border:1px solid #ef9f27}
+.day-dot{display:inline-block;width:22px;height:22px;border-radius:50%;font-size:10px;font-weight:600;text-align:center;line-height:22px;margin:1px}
+.day-on{background:#eeedfe;color:#3c3489}
+.day-off{background:#f1efe8;color:#bbb}
+.copy-box{background:#f5f5f3;border:1px solid #e5e5e3;border-radius:8px;padding:14px 16px;font-family:'Courier New',monospace;font-size:13px;line-height:2;white-space:pre;color:#1a1a1a;overflow-x:auto}
+.empty-state{text-align:center;padding:40px;color:#aaa;font-size:14px}
+.loading{text-align:center;padding:30px;color:#1d9e75;font-size:14px}
+.error-msg{background:#fff0f0;border:1px solid #f5c1c1;border-radius:8px;padding:14px;color:#a32d2d;font-size:13px;margin-bottom:12px}
+.client-name{font-size:16px;font-weight:700;margin-bottom:2px}
+.client-sub{font-size:12px;color:#888;margin-bottom:14px}
+.no-data{text-align:center;padding:16px;color:#bbb;font-size:13px}
+#results{display:none}
+#loading-bar{display:none}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="logo">MUNforward <span>·</span> ค้นหา Spot & PR</div>
+  <div style="margin-left:auto;font-size:12px;color:#aaa" id="file-status">กำลังโหลดไฟล์...</div>
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <div class="section-title">ค้นหาลูกค้า</div>
+    <div class="search-row">
+      <div class="field">
+        <label>ชื่อลูกค้า (พิมพ์บางส่วนได้)</label>
+        <input type="text" id="search-input" placeholder="เช่น กรุงศรี, namwan, คลินิก..." onkeydown="if(event.key==='Enter')doSearch()"/>
+      </div>
+      <div class="field">
+        <label>เดือน</label>
+        <select id="month-select"></select>
+      </div>
+      <div class="field">
+        <label>คลื่น</label>
+        <select id="wave-select">
+          <option value="all">ทั้งหมด</option>
+          <option value="103">103 เท่านั้น</option>
+          <option value="88">88 เท่านั้น</option>
+        </select>
+      </div>
+      <div class="field" style="justify-content:flex-end">
+        <button class="btn btn-primary" onclick="doSearch()" id="search-btn" disabled>ค้นหา</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="error-area"></div>
+  <div class="loading" id="loading-bar">กำลังค้นหา...</div>
+  <div id="results"></div>
+
+</div>
+
+<script>
+const FILE_ID = '1C4qF0rPfP4bEjO0HJgMhSPsnUOX8bSdk';
+const FETCH_URL = `https://docs.google.com/spreadsheets/d/${FILE_ID}/export?format=xlsx&cachebust=${Date.now()}`;
+
+let workbook = null;
+
+const MONTH_MAP = {
+  jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12,
+  june:6,july:7,april:4
+};
+const MONTH_TH = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+  'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const DAY_LABELS = ['จ','อ','พ','พฤ','ศ'];
+
+function parseSheetDate(name, prefix) {
+  let s = name.slice(prefix.length).toLowerCase().trim();
+  for (const [k,v] of Object.entries(MONTH_MAP)) {
+    if (s.startsWith(k)) {
+      const yr = parseInt(s.slice(k.length));
+      if (!isNaN(yr)) return {yr, mo: v};
+    }
+  }
+  return null;
+}
+
+function getRecentMonths(n=3) {
+  const now = new Date();
+  const months = [];
+  for (let i=0; i<n; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const yr = d.getFullYear() % 100;
+    const mo = d.getMonth()+1;
+    months.push({yr, mo});
+  }
+  return months;
+}
+
+function findSheetForMonth(prefix, yr, mo) {
+  if (!workbook) return null;
+  for (const name of workbook.SheetNames) {
+    if (!name.startsWith(prefix)) continue;
+    const d = parseSheetDate(name, prefix);
+    if (d && d.yr === yr && d.mo === mo) return name;
+  }
+  return null;
+}
+
+function isFreeSlot(timeStr) {
+  if (!timeStr) return false;
+  const parts = timeStr.toString().replace(':','').replace('.','');
+  const h = parseInt(parts.slice(0,2));
+  return (h >= 22 || h < 6);
+}
+
+function formatTime(raw) {
+  if (!raw) return '';
+  const s = raw.toString().replace(':','').padStart(4,'0');
+  return s.slice(0,2) + '.' + s.slice(2);
+}
+
+function searchSpotSheet(sheetName, keyword) {
+  if (!workbook || !workbook.Sheets[sheetName]) return [];
+  const ws = workbook.Sheets[sheetName];
+  const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+  const results = [];
+  for (let r=3; r<data.length; r++) {
+    const row = data[r];
+    const timeVal = row[0];
+    if (!timeVal) continue;
+    for (let c=2; c<=15; c++) {
+      const cell = row[c];
+      if (!cell) continue;
+      const cellStr = cell.toString();
+      if (cellStr.includes('-') && cellStr.toLowerCase().includes(keyword.toLowerCase())) {
+        results.push({
+          time: formatTime(timeVal),
+          timeRaw: timeVal.toString(),
+          pos: `สปอต ${c-1}`,
+          free: isFreeSlot(timeVal)
+        });
+      }
+    }
+  }
+  return results;
+}
+
+function searchPRSheet(sheetName, keyword) {
+  if (!workbook || !workbook.Sheets[sheetName]) return [];
+  const ws = workbook.Sheets[sheetName];
+  const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+  const results = [];
+
+  // row 3 (index 3) = header เวลา
+  const timeHeaders = data[3] || [];
+
+  for (let r=5; r<data.length; r++) {
+    const row = data[r];
+    const rowLabel = (row[0] || '').toString();
+    if (!rowLabel) continue;
+
+    // ข้าม jingle/header rows
+    if (rowLabel.includes('ห้ามเกิน') || rowLabel.includes('Jingle') ||
+        rowLabel.startsWith('DAYPART') || rowLabel === '') continue;
+
+    // หาวัน
+    let dayIdx = -1;
+    const dayNames = ['วันจันทร์','วันอังคาร','วันพุธ','วันพฤหัสบดี','วันศุกร์'];
+    for (let d=0; d<dayNames.length; d++) {
+      if (rowLabel.includes(dayNames[d])) { dayIdx = d; break; }
+    }
+    if (dayIdx === -1) continue;
+
+    // หา position type
+    let posType = '';
+    let isDayPart = false;
+    if (rowLabel.includes('ตำแหน่ง A') || rowLabel.includes('ก่อนเบรค 1')) posType = 'A';
+    else if (rowLabel.includes('ตำแหน่ง B') || rowLabel.includes('MUN PROMPT PLAY')) posType = 'B';
+    else if (rowLabel.includes('ตำแหน่ง C') || rowLabel.includes('ก่อน BREAK 2')) posType = 'C';
+    else if (rowLabel.includes('ตำแหน่ง D') || rowLabel.includes('หลัง BREAK 2')) posType = 'D';
+    else if (rowLabel.includes('DAY PART') || rowLabel.includes('MUSIC PROGRAM') ||
+             rowLabel.includes('PICK & PLAY') || rowLabel.includes('PROMPT PLAY') ||
+             rowLabel.includes('TONZA')) isDayPart = true;
+    else continue;
+
+    for (let c=1; c<row.length; c++) {
+      const cell = row[c];
+      if (!cell) continue;
+      const cellStr = cell.toString();
+      if (!cellStr.includes('-')) continue; // ต้องมีวันที่สัญญา
+      if (!cellStr.toLowerCase().includes(keyword.toLowerCase())) continue;
+
+      const colHeader = (timeHeaders[c] || '').toString();
+      // ดึงเวลาจาก header เช่น "1200 - 1300 ดีเจโบ"
+      const timeMatch = colHeader.match(/(\d{4})/);
+      if (!timeMatch) continue;
+      const baseTime = timeMatch[1];
+      const baseH = parseInt(baseTime.slice(0,2));
+      const baseM = parseInt(baseTime.slice(2,4));
+
+      let displayTime = '';
+      if (isDayPart) {
+        displayTime = `${baseH.toString().padStart(2,'0')}.${baseM.toString().padStart(2,'0')}`;
+      } else {
+        // A=35, B=55, C=55, D=59
+        const minMap = {A:35,B:55,C:55,D:59};
+        const min = minMap[posType] || 30;
+        displayTime = `${baseH.toString().padStart(2,'0')}.${min.toString().padStart(2,'0')}`;
+      }
+
+      // check ถ้ามีอยู่แล้วใน results (same posType + time)
+      const key = `${posType||'daypart'}_${displayTime}`;
+      let existing = results.find(r2 => r2.key === key);
+      if (existing) {
+        existing.days[dayIdx] = true;
+      } else {
+        const days = [false,false,false,false,false];
+        days[dayIdx] = true;
+        results.push({key, posType, isDayPart, time: displayTime, days});
+      }
+    }
+  }
+  return results;
+}
+
+function formatDays(days) {
+  const names = ['จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์'];
+  const on = days.map((d,i) => d ? names[i] : null).filter(Boolean);
+  if (on.length === 5) return 'จันทร์-ศุกร์';
+  if (on.length === 0) return '';
+  return on.join(' ');
+}
+
+function buildCopyText(clientName, spot103, spot88, pr103) {
+  let txt = '';
+  if (spot103.length > 0 || pr103.length > 0) {
+    txt += 'MUNforward\n';
+    if (spot103.length > 0) {
+      const times = spot103.map(s => s.free ? s.time+'(f)' : s.time).join(' / ');
+      txt += `SPOT: ${times}\n`;
+    }
+    for (const pr of pr103) {
+      if (pr.isDayPart) {
+        txt += `PR: ${pr.time} ในช่วง (${formatDays(pr.days)})\n`;
+      } else {
+        txt += `PR: ${pr.time} ${pr.posType} (${formatDays(pr.days)})\n`;
+      }
+    }
+    txt += '\n';
+  }
+  if (spot88.length > 0) {
+    txt += 'MUNforward Xtra\n';
+    const times = spot88.map(s => s.free ? s.time+'(f)' : s.time).join(' / ');
+    txt += `SPOT: ${times}\n`;
+  }
+  return txt.trim();
+}
+
+function renderDayDots(days) {
+  return DAY_LABELS.map((l,i) =>
+    `<span class="day-dot ${days[i]?'day-on':'day-off'}">${l}</span>`
+  ).join('');
+}
+
+function renderResults(keyword, monthKey) {
+  const [yr, mo] = monthKey.split('-').map(Number);
+  const wave = document.getElementById('wave-select').value;
+
+  const spot103SheetName = findSheetForMonth('Spot-', yr, mo);
+  const spot88SheetName  = findSheetForMonth('XtraSpot-', yr, mo);
+  const pr103SheetName   = findSheetForMonth('PR-', yr, mo);
+
+  const spot103 = (wave !== '88' && spot103SheetName) ? searchSpotSheet(spot103SheetName, keyword) : [];
+  const spot88  = (wave !== '103' && spot88SheetName)  ? searchSpotSheet(spot88SheetName, keyword)  : [];
+  const pr103   = (wave !== '88' && pr103SheetName)   ? searchPRSheet(pr103SheetName, keyword)   : [];
+
+  const totalSpot = spot103.length + spot88.length;
+  const totalPrime = [...spot103,...spot88].filter(s=>!s.free).length;
+  const totalFree  = [...spot103,...spot88].filter(s=>s.free).length;
+
+  if (totalSpot === 0 && pr103.length === 0) {
+    return `<div class="card"><div class="empty-state">ไม่พบข้อมูลของ "<b>${keyword}</b>" ในเดือนนี้<br><small style="color:#bbb">ลองเปลี่ยนเดือนหรือคำค้นหาค่ะ</small></div></div>`;
+  }
+
+  const copyText = buildCopyText(keyword, spot103, spot88, pr103);
+  const monthLabel = MONTH_TH[mo] + ' 25' + yr.toString().padStart(2,'0');
+
+  let html = `
+  <div class="card">
+    <div class="client-name">${keyword}</div>
+    <div class="client-sub">${monthLabel}</div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-n">${totalSpot}</div><div class="stat-l">spot ทั้งหมด</div></div>
+      <div class="stat"><div class="stat-n" style="color:#0f6e56">${totalPrime}</div><div class="stat-l">prime</div></div>
+      <div class="stat"><div class="stat-n" style="color:#888">${totalFree}</div><div class="stat-l">free</div></div>
+      <div class="stat"><div class="stat-n" style="color:#633806">${pr103.length}</div><div class="stat-l">PR slot</div></div>
+      <div class="stat"><div class="stat-n" style="color:#085041">${spot103.length}</div><div class="stat-l">คลื่น 103</div></div>
+      <div class="stat"><div class="stat-n" style="color:#3c3489">${spot88.length}</div><div class="stat-l">คลื่น 88</div></div>
+    </div>
+  </div>
+
+  <div class="three-col">`;
+
+  // Spot 103
+  html += `<div class="card">
+    <div><span class="wave-pill w103">103 MHz</span> <span style="font-size:11px;color:#888">Spot · ${spot103.length} slot</span></div>`;
+  if (spot103.length === 0) {
+    html += `<div class="no-data">ไม่มีข้อมูล</div>`;
+  } else {
+    for (const s of spot103) {
+      html += `<div class="slot-row"><span class="slot-time">${s.time}</span><span class="slot-pos">${s.pos}</span><span class="chip ${s.free?'chip-free':'chip-prime'}">${s.free?'free':'prime'}</span></div>`;
+    }
+  }
+  html += `</div>`;
+
+  // Spot 88
+  html += `<div class="card">
+    <div><span class="wave-pill w88">88 MHz</span> <span style="font-size:11px;color:#888">Spot · ${spot88.length} slot</span></div>`;
+  if (spot88.length === 0) {
+    html += `<div class="no-data">ไม่มีข้อมูล</div>`;
+  } else {
+    for (const s of spot88) {
+      html += `<div class="slot-row"><span class="slot-time">${s.time}</span><span class="slot-pos">${s.pos}</span><span class="chip ${s.free?'chip-free':'chip-prime'}">${s.free?'free':'prime'}</span></div>`;
+    }
+  }
+  html += `</div>`;
+
+  // PR 103
+  html += `<div class="card">
+    <div><span class="wave-pill wpr">PR · 103</span> <span style="font-size:11px;color:#888">${pr103.length} รายการ</span></div>`;
+  if (pr103.length === 0) {
+    html += `<div class="no-data">ไม่มีข้อมูล</div>`;
+  } else {
+    for (const pr of pr103) {
+      const label = pr.isDayPart ? 'ในช่วง' : `ตำแหน่ง ${pr.posType}`;
+      html += `<div class="slot-row"><span class="slot-time">${pr.time}</span><span class="slot-pos">${label}</span><span class="chip chip-pr">${pr.isDayPart?'Day Part':pr.posType}</span></div>
+      <div style="padding:4px 0 8px 0">${renderDayDots(pr.days)}</div>`;
+    }
+  }
+  html += `</div></div>`;
+
+  // Copy box
+  if (copyText) {
+    html += `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-title" style="margin:0">ข้อความสำหรับใบเสนอราคา</div>
+        <button class="btn-copy" onclick="copyText()">copy</button>
+      </div>
+      <div class="copy-box" id="copy-content">${copyText}</div>
+    </div>`;
+  }
+
+  return html;
+}
+
+function copyText() {
+  const el = document.getElementById('copy-content');
+  if (!el) return;
+  navigator.clipboard.writeText(el.innerText).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 1500);
+  });
+}
+
+function doSearch() {
+  const keyword = document.getElementById('search-input').value.trim();
+  if (!keyword) return;
+  const monthKey = document.getElementById('month-select').value;
+  document.getElementById('loading-bar').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+  setTimeout(() => {
+    const html = renderResults(keyword, monthKey);
+    document.getElementById('results').innerHTML = html;
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('loading-bar').style.display = 'none';
+  }, 100);
+}
+
+function buildMonthDropdown() {
+  const sel = document.getElementById('month-select');
+  const months = getRecentMonths(3);
+  sel.innerHTML = '';
+  for (const {yr, mo} of months) {
+    const label = MONTH_TH[mo] + ' 25' + yr.toString().padStart(2,'0');
+    const val = `${yr}-${mo}`;
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  }
+}
+
+async function loadFile() {
+  try {
+    document.getElementById('file-status').textContent = 'กำลังโหลดไฟล์...';
+    const resp = await fetch(FETCH_URL);
+    if (!resp.ok) throw new Error('โหลดไฟล์ไม่ได้');
+    const buf = await resp.arrayBuffer();
+    workbook = XLSX.read(buf, {type:'array'});
+    document.getElementById('file-status').textContent = 'โหลดไฟล์แล้ว ✓';
+    document.getElementById('search-btn').disabled = false;
+    buildMonthDropdown();
+  } catch(e) {
+    document.getElementById('file-status').textContent = 'โหลดไฟล์ไม่ได้';
+    document.getElementById('error-area').innerHTML =
+      `<div class="error-msg">ไม่สามารถโหลดไฟล์ได้ — กรุณาตรวจสอบว่าไฟล์ Google Drive share เป็น "Anyone with the link" แล้วค่ะ<br><small>${e.message}</small></div>`;
+  }
+}
+
+loadFile();
+</script>
+</body>
+</html>
